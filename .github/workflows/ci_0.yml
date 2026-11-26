@@ -1,28 +1,31 @@
-# Nome do pipeline
-name: CI Pipeline Básico
+name: Deploy Infraestrutura AWS (Ansible)
 
-# Quando o pipeline será executado
 on:
   push:
-    branches: ["main"]
-  pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
-  build-and-test:
-    # Sistema operacional onde o job vai rodar
+  deploy-s3:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
-
-      - name: Instalar Ansible
+      - name: Instalar Ansible e dependências
         run: |
-          pip install ansible-core==2.17.5
-          ansible-galaxy collection install -r requirements.yml
+          pip install ansible boto3 botocore
+          ansible-galaxy collection install amazon.aws
+
+      - name: Validar sintaxe do Playbook
+        run: ansible-playbook --syntax-check create_bucket.yml
+
+      - name: Executar Playbook na AWS
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+          AWS_DEFAULT_REGION: us-east-1
+        run: ansible-playbook create_bucket.yml
 
